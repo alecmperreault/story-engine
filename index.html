@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15171c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Story Engine</title>
+<style>
+:root{--bg:#15171c;--panel:#1d2027;--panel2:#262a33;--line:#343a46;--text:#ece9e3;--muted:#9aa0ab;--accent:#e0b04a;
+  --agent:#c98a1e;--engine:#6a3fa0;--anchor:#2f6fa8;--conflict:#b23a35;--aspect:#2f8a55;--other:#5b6270}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding-bottom:calc(120px + env(safe-area-inset-bottom))}
+button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-height:44px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#1b1b1b;font-weight:700}
+button.ghost{background:transparent}
+button:disabled{opacity:.4}
+input,select,textarea{font:inherit;color:var(--text);background:#101217;border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
+header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);padding:calc(8px + env(safe-area-inset-top)) 12px 8px;display:flex;align-items:center;gap:8px}
+header h1{font-size:17px;margin:0;flex:1;letter-spacing:.05em;text-transform:uppercase}
+header button{padding:8px 12px}
+#drawbar{position:sticky;top:61px;z-index:19;background:var(--bg);display:flex;gap:8px;overflow-x:auto;padding:10px 12px;border-bottom:1px solid #22262e;scrollbar-width:none}
+#drawbar::-webkit-scrollbar{display:none}
+.pile{flex:0 0 auto;border-left:6px solid var(--c);display:flex;gap:8px;align-items:center;padding:8px 12px}
+.pile .n{color:var(--muted);font-variant-numeric:tabular-nums;font-size:14px}
+main{padding:12px;display:flex;flex-direction:column;gap:12px}
+.empty{color:var(--muted);text-align:center;padding:40px 16px;line-height:1.6}
+.sec{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:8px 2px -4px;display:flex;align-items:center;gap:8px}
+/* card */
+.card{position:relative;border-radius:14px;padding:12px 14px 12px 18px;background:linear-gradient(150deg,color-mix(in srgb,var(--c) 88%,white 6%),color-mix(in srgb,var(--c) 62%,black 38%));box-shadow:0 3px 10px rgba(0,0,0,.4)}
+.card.cand{outline:2px dashed rgba(255,255,255,.75);outline-offset:3px}
+.card .top{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.85}
+.card .top .pk{opacity:.7;letter-spacing:.04em;text-transform:none;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .more{background:rgba(0,0,0,.25);border:none;min-height:36px;padding:4px 12px;font-size:18px;line-height:1}
+.card .face{margin:8px 0 6px;font-size:21px;font-weight:700;line-height:1.25;min-height:30px;cursor:pointer}
+.card .face .both{display:block;font-size:17px;margin-top:4px;opacity:.95}
+.card .turns{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:rgba(0,0,0,.28);border:none;border-radius:999px;padding:6px 11px;min-height:34px;font-size:13px;color:#fff}
+.chip b{opacity:.7;font-weight:600;margin-right:4px}
+.chip.on{background:rgba(255,255,255,.22)}
+.tucks{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.tuck{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.32);border-left:5px solid var(--c);border-radius:8px;padding:8px 10px;font-size:15px;font-weight:600;min-height:40px}
+.tuck .t{font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;font-weight:500;margin-left:auto}
+.linkline{margin-top:8px;font-size:13px;background:rgba(0,0,0,.25);border-radius:8px;padding:7px 10px}
+.lock{position:absolute;right:58px;top:12px;font-size:12px}
+.cands{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 8px;scroll-snap-type:x mandatory}
+.cands .card{flex:0 0 82%;scroll-snap-align:start}
+.cbtns{display:flex;gap:6px;margin-top:10px}
+.cbtns button{flex:1;min-height:38px;padding:6px 8px;font-size:14px;background:rgba(0,0,0,.3);border:none}
+.cbtns button.keep{background:var(--accent);color:#1b1b1b;font-weight:700}
+/* slots */
+.slot{border:2px dashed rgba(255,255,255,.25);border-radius:14px;padding:16px;text-align:center;color:var(--muted)}
+.slot.cur{border-color:var(--accent);color:#f3e2b8}
+.slot button{margin-top:10px;font-size:14px;min-height:38px;padding:6px 12px}
+.slotlbl{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#e9f3ef;margin:6px 2px -6px}
+/* layout panel */
+#lp{background:#262a33;border:1px solid var(--accent);border-radius:14px;padding:14px}
+#lp .k{font-size:11px;color:var(--accent);letter-spacing:.12em;text-transform:uppercase}
+#lp h3{margin:2px 0 6px;font-size:18px}
+#lp .prog{display:flex;gap:4px;margin-bottom:8px}#lp .prog i{flex:1;height:4px;border-radius:2px;background:#3a404c}
+#lp .prog i.d{background:#8a7440}#lp .prog i.c{background:var(--accent)}
+#lp .now{margin:4px 0 12px;line-height:1.45}
+#lp .acts{display:flex;gap:8px;flex-wrap:wrap}
+#lp .tip{font-size:13px;color:var(--muted);margin-top:10px}
+/* prompt bar */
+#pbar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--panel);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom));max-height:70vh;overflow:auto}
+#pbar .h{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+#pbar .h span{flex:1}
+#pbar .h button{min-height:34px;padding:4px 10px;font-size:13px;text-transform:none;letter-spacing:0}
+#reading{font-family:Georgia,serif;font-size:16px;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#pbar.open #reading{display:block}
+#pbar .more{display:none;margin-top:10px;gap:8px;flex-direction:column}
+#pbar.open .more{display:flex}
+#notes{min-height:110px;resize:vertical}
+/* sheets */
+#scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:40;display:none}
+#scrim.show{display:block}
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--panel);border-radius:18px 18px 0 0;padding:8px 14px calc(16px + env(safe-area-inset-bottom));max-height:85vh;overflow:auto;transform:translateY(105%);transition:transform .2s ease}
+#sheet.show{transform:none}
+#sheet .grab{width:44px;height:5px;border-radius:3px;background:#4a5160;margin:4px auto 10px}
+#sheet h3{margin:0 0 4px;font-size:18px}
+#sheet .sub{color:var(--muted);font-size:14px;margin-bottom:10px}
+#sheet .items{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+#sheet .items button{text-align:left;display:flex;align-items:center;gap:10px}
+#sheet .items button .bar{width:6px;align-self:stretch;border-radius:3px;background:var(--c,transparent)}
+#sheet .items button small{color:var(--muted);margin-left:auto;font-size:12px}
+#sheet .items button.danger{color:#ff9b93}
+#sheet label.row{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid #2a2f39}
+#sheet label.row input{width:22px;height:22px}
+#sheet label.row small{margin-left:auto;color:var(--muted)}
+#sheet .grp{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:14px 0 2px}
+#sheet .field{margin-top:10px}#sheet .field label{display:block;font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+#sheet .btnrow{display:flex;gap:8px;margin-top:14px}#sheet .btnrow button{flex:1}
+#toast{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);background:#0e1014;border:1px solid var(--line);padding:10px 16px;border-radius:10px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:60;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>Story Engine</h1>
+  <button id="bLayouts">Layouts</button>
+  <button id="bMenu" aria-label="Menu">☰</button>
+</header>
+<div id="drawbar"></div>
+<main id="main"></main>
+<div id="pbar">
+  <div class="h"><span>Prompt</span><button id="bCopy">Copy</button><button id="bPbar">Notes ▴</button></div>
+  <div id="reading"></div>
+  <div class="more"><textarea id="notes" placeholder="Write down the idea in your own words…"></textarea></div>
+</div>
+<div id="scrim"></div>
+<div id="sheet"></div>
+<div id="toast"></div>
+<input type="file" id="fileX" accept=".xlsx,.xls,.xlsm,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+<input type="file" id="fileS" accept=".json,application/json" hidden>
+<script src="xlsx.mini.min.js"></script>
+<script>
+"use strict";
+/* ========== shared model (same session format as the desktop table) ========== */
+const TYPE_ORDER=["Agent","Engine","Anchor","Conflict","Aspect"];
+const TYPE_COLOR={Agent:"var(--agent)",Engine:"var(--engine)",Anchor:"var(--anchor)",Conflict:"var(--conflict)",Aspect:"var(--aspect)"};
+const TWO_CUE=new Set(["Engine","Conflict"]);
+const NOUN_TYPES=new Set(["Agent","Anchor"]);
+const EDGES=["b","r","t","l"];
+const LS_KEY="storyEngineTable.v1";
+const CW=236,RH=310,CARD=172;
+let S=blankState();
+function blankState(){return{version:1,library:{},packs:{},selected:{},piles:{},inst:{},discard:[],notes:"",zoom:1,z:1,seq:1,layout:null}}
+const $=s=>document.querySelector(s);
+const mod=(a,n)=>((a%n)+n)%n;
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("show"),2000)}
+const typeColor=t=>TYPE_COLOR[t]||"var(--other)";
+const cardOf=i=>i.custom||S.library[i.cardId];
+function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(S))}catch(e){toast("Could not store on this device. Use Save session.")}}
+const hasLib=()=>Object.keys(S.library).length>0;
+const tops=()=>Object.values(S.inst).filter(i=>!i.parent);
+const ordered=()=>tops().sort((a,b)=>a.x-b.x||a.y-b.y);
+
+/* ---- import ---- */
+function normType(v){if(!v)return"";const s=String(v).trim();return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase()}
+function importWorkbook(buf){
+  let wb;try{wb=XLSX.read(buf,{type:"array"})}catch(e){alert("Could not read that file: "+e.message);return}
+  const lib={};let count=0;
+  wb.SheetNames.forEach(sn=>{
+    XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:null,raw:false}).forEach((r,i)=>{
+      const g={};for(const k in r)g[String(k).trim().toLowerCase()]=r[k]==null?null:String(r[k]).trim();
+      const type=normType(g["card type"]||g["type"]);
+      const cues={t:g["top"]||"",r:g["right"]||"",b:g["bottom"]||"",l:g["left"]||""};
+      if(!type||!(cues.t||cues.r||cues.b||cues.l))return;
+      if(TWO_CUE.has(type)&&(cues.r||cues.l)){const v=[cues.t,cues.r,cues.b,cues.l].filter(Boolean);cues.t=v[0]||"";cues.b=v[1]||"";cues.r="";cues.l=""}
+      let id=g["card id"]||g["id"]||(sn+"-"+(i+2));while(lib[id])id+="·";
+      lib[id]={id,deck:g["deck"]||"Story Engine",pack:g["pack"]||g["set"]||sn,type,cues};count++;
+    });
+  });
+  if(!count){alert("No cards found. The workbook needs a 'Card Type' column and Top, Right, Bottom, Left columns.");return}
+  const zoom=S.zoom;S=blankState();S.library=lib;S.zoom=zoom;
+  Object.values(lib).forEach(c=>{const k=c.deck+" / "+c.pack;S.packs[k]=S.packs[k]||{deck:c.deck,pack:c.pack,n:0};S.packs[k].n++});
+  Object.keys(S.packs).forEach(k=>S.selected[k]=true);
+  render();save();toast(`Loaded ${count} cards`);packsSheet();
+}
+$("#fileX").onchange=e=>{const f=e.target.files[0];e.target.value="";if(!f)return;const fr=new FileReader();fr.onload=()=>importWorkbook(new Uint8Array(fr.result));fr.readAsArrayBuffer(f)};
+
+/* ---- piles ---- */
+function buildPiles(){
+  const used=new Set(Object.values(S.inst).map(i=>i.cardId).filter(Boolean));S.piles={};S.discard=[];
+  Object.values(S.library).forEach(c=>{if(S.selected[c.deck+" / "+c.pack]&&!used.has(c.id))(S.piles[c.type]=S.piles[c.type]||[]).push(c.id)});
+  Object.values(S.piles).forEach(shuffle);render();save();
+  toast(`Shuffled ${Object.values(S.piles).reduce((a,p)=>a+p.length,0)} cards into piles`);
+}
+function pileTypes(){const ts=new Set([...Object.keys(S.piles),...Object.values(S.library).map(c=>c.type)]);return[...TYPE_ORDER.filter(t=>ts.has(t)),...[...ts].filter(t=>!TYPE_ORDER.includes(t)).sort()]}
+function nextSpot(){const t=tops().filter(i=>!i.cand&&!i.slot);const mx=t.length?Math.max(...t.map(i=>i.x)):null;
+  return S.layout?{x:(mx==null?S.layout.ox:mx)+CW,y:candY()+RH}:{x:mx==null?60:mx+CW,y:70}}
+function newInst(cardId,custom,pos){const iid="i"+(S.seq++),p=pos||nextSpot();S.inst[iid]={iid,cardId:cardId||null,custom:custom||null,x:p.x,y:p.y,rot:0,parent:null,children:[],z:++S.z};return iid}
+function drawOne(type){const p=S.piles[type];if(!p||!p.length){toast(`The ${type} pile is empty`);return}newInst(p.pop());render();save();setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"}),30)}
+
+/* ---- card ops ---- */
+const isTwo=i=>TWO_CUE.has(cardOf(i).type);
+function activeEdges(i){const c=cardOf(i),k=mod(i.rot,4);
+  if(TWO_CUE.has(c.type)){if(k%2===1)return["b","t"].filter(e=>c.cues[e]);const e=EDGES[k];return c.cues[e]?[e]:[EDGES[mod(k+2,4)]]}
+  return[EDGES[k]]}
+const activeText=i=>{const c=cardOf(i);return activeEdges(i).map(e=>c.cues[e]).filter(Boolean)};
+function rotate(iid,n){const i=S.inst[iid];i.rot+=isTwo(i)?2*n:n;render();save()}
+function detach(iid){const i=S.inst[iid];if(!i.parent)return;const p=S.inst[i.parent];if(p)p.children=p.children.filter(c=>c!==iid);i.parent=null}
+function tuck(iid,tid){
+  let t=S.inst[tid];if(t.parent){tid=t.parent;t=S.inst[tid]}if(iid===tid)return;
+  const i=S.inst[iid];detach(iid);const moving=[iid,...i.children];i.children=[];i.cand=false;i.slot=null;
+  moving.forEach(m=>{S.inst[m].parent=tid;S.inst[m].children=S.inst[m].children||[];t.children.push(m)});render();save();
+}
+function untuck(iid){const i=S.inst[iid],p=S.inst[i.parent];const k=p.children.indexOf(iid)+1;detach(iid);i.x=p.x+k*20;i.y=p.y+RH;i.z=++S.z;render();save()}
+function removeInst(iid,where,quiet){
+  const i=S.inst[iid];if(!i)return;detach(iid);
+  [iid,...i.children].forEach(m=>{const mi=S.inst[m];if(!mi)return;
+    if(mi.cardId){if(where==="discard")S.discard.push(mi.cardId);else if(where==="pile"){const t=S.library[mi.cardId].type;(S.piles[t]=S.piles[t]||[]).unshift(mi.cardId)}}
+    delete S.inst[m]});
+  if(!quiet){render();save()}
+}
+function moveOrder(iid,dir){
+  const list=ordered().filter(i=>!i.cand),k=list.findIndex(i=>i.iid===iid),j=k+dir;if(j<0||j>=list.length)return;
+  const a=list[k],b=list[j];[a.x,b.x]=[b.x,a.x];[a.y,b.y]=[b.y,a.y];
+  if(a.x===b.x&&a.y===b.y)a.x+=dir;render();save();
+}
+
+/* ---- sentence ---- */
+function cueText(i){const t=activeText(i);return i.custom?t.join(" and "):t.map(x=>x.toLowerCase()).join(" and ")}
+function nounPhrase(i){
+  const c=cardOf(i),txt=cueText(i),kids=i.children.map(id=>S.inst[id]).filter(Boolean);
+  const adj=kids.filter(k=>cardOf(k).type==="Aspect").map(cueText),extra=kids.filter(k=>cardOf(k).type!=="Aspect");let out;
+  if(NOUN_TYPES.has(c.type)||!TYPE_ORDER.includes(c.type)){
+    const m=txt.match(/^(a|an|the)\s+(.*)$/i);
+    if(adj.length){const noun=m?m[2]:txt,a=adj.join(", ");const art=m?(m[1].toLowerCase()==="the"?"the":(/^[aeiou]/i.test(a)?"an":"a")):"";out=(art?art+" ":"")+a+" "+noun}
+    else out=txt;
+  }else if(c.type==="Aspect")out="("+txt+")";
+  else{out=txt;if(adj.length)out+=" ("+adj.join(", ")+")"}
+  if(extra.length)out+=" ["+extra.map(nounPhrase).join("; ")+"]";
+  return out;
+}
+const cap=s=>{s=s.replace(/\s+/g," ").trim();s=s.charAt(0).toUpperCase()+s.slice(1);return/[.!?]$/.test(s)?s:s+"."};
+const asWill=t=>t.replace(/\bwants to\b/g,"will");
+function readLine(cards){let prev=null;return cards.map(i=>{let t=nounPhrase(i);if(cardOf(i).type==="Engine"&&prev&&cardOf(prev).type==="Anchor")t=asWill(t);prev=i;return t}).join(" ")}
+function clause(L){
+  const e=S.inst[L.e],src=S.inst[L.from],dst=S.inst[L.to];let verb=cueText(e);if(cardOf(src).type==="Anchor")verb=asWill(verb);
+  const kids=e.children.map(id=>S.inst[id]).filter(Boolean);
+  const adj=kids.filter(k=>cardOf(k).type==="Aspect").map(cueText),conf=kids.filter(k=>cardOf(k).type==="Conflict").map(cueText);
+  const other=kids.filter(k=>!["Aspect","Conflict"].includes(cardOf(k).type)).map(nounPhrase);
+  let s=nounPhrase(src)+" "+verb+(adj.length?" ("+adj.join(", ")+")":"")+" "+nounPhrase(dst);
+  if(conf.length)s+=" "+conf.join(" and ");if(other.length)s+=" ["+other.join("; ")+"]";return cap(s);
+}
+function promptText(){
+  const t=ordered();if(!t.length)return"";const L=effectiveLinks();
+  if(!L.length){const line=readLine(t.filter(i=>!i.cand));return line.trim()?cap(line):""}
+  const used=new Set();L.forEach(l=>{used.add(l.e);used.add(topOf(l.from));used.add(topOf(l.to))});
+  const rest=t.filter(i=>!used.has(i.iid)&&!i.cand);
+  const out=L.sort((a,b)=>S.inst[a.e].y-S.inst[b.e].y||S.inst[a.e].x-S.inst[b.e].x).map(clause);
+  if(rest.length)out.push("Also on the table: "+cap(readLine(rest)));return out.join(" ");
+}
+
+/* ---- layouts (same definitions as the desktop table) ---- */
+const AA=["Agent","Anchor"];
+const LAYOUTS={
+ seed:{name:"Story Seed",kind:"Simple",blurb:"One card of each type for a quick premise: who wants what, and what stands in the way.",
+  slots:[{k:"char",label:"Character",types:["Agent"],c:0,r:0},{k:"mot",label:"Motivation",types:["Engine"],c:1,r:0},{k:"tgt",label:"What they want",types:["Anchor"],c:2,r:0},{k:"obs",label:"Obstacle",types:["Conflict"],c:3,r:0}],
+  steps:[{text:"Draw an Agent to create a character.",draw:{Agent:1},slot:"char"},
+   {text:"Draw an Engine to give them a motivation.",draw:{Engine:1},slot:"mot"},
+   {text:"Draw an Anchor to create something they want.",draw:{Anchor:1},slot:"tgt"},
+   {text:"Draw a Conflict to create an obstacle or consequence.",draw:{Conflict:1},slot:"obs"},
+   {text:"Draw an Aspect and tuck it under the card it describes. An Agent or Anchor is a good first choice.",draw:{Aspect:1},tuck:true}]},
+ character:{name:"Character Concept",kind:"Simple",blurb:"A character with a starting motivation and a problem they can act on.",
+  slots:[{k:"char",label:"Main character",types:["Agent"],c:0,r:0},{k:"mot",label:"Motivation",types:["Engine"],c:1,r:0},{k:"tgt",label:"Who or what they want",types:AA,c:2,r:0},{k:"obs",label:"Obstacle or price",types:["Conflict"],c:3,r:0}],
+  steps:[{text:"Draw two Agents. Keep one as the main character.",draw:{Agent:2},slot:"char"},
+   {text:"Draw two Engines. Keep one as the character's motivation.",draw:{Engine:2},slot:"mot"},
+   {text:"Draw an Agent and an Anchor. Keep one as the person or thing the character wants or wants to affect.",draw:{Agent:1,Anchor:1},slot:"tgt"},
+   {text:"Draw a Conflict to establish the obstacle or price.",draw:{Conflict:1},slot:"obs"},
+   {text:"Optional: draw an Anchor and tuck it under the main character or the target as a possession or location.",draw:{Anchor:1},tuck:true,optional:true},
+   {text:"Draw four Aspects and tuck as many as you want under the elements they describe.",draw:{Aspect:4},tuck:true}],
+  tip:"For roleplaying: lock the target slot to a party member or something they care about to make an adventure hook."},
+ item:{name:"Item or Setting Driven Story",kind:"Simple",blurb:"An object or place is the starting point, and its Engine reads as an effect (“will”).",
+  slots:[{k:"obj",label:"Object",types:["Anchor"],c:0,r:0},{k:"eff",label:"Effect (reads “will”)",types:["Engine"],c:1,r:0},{k:"aff",label:"Who or what is affected",types:AA,c:2,r:0},{k:"obs",label:"Obstacle (optional)",types:["Conflict"],c:3,r:0}],
+  steps:[{text:"Draw two Anchors. Place one as the object and tuck the other under it as the setting.",draw:{Anchor:2},slot:"obj",tuck:true},
+   {text:"Draw three Engines. Keep one as the effect the object has on the story.",draw:{Engine:3},slot:"eff"},
+   {text:"Draw an Agent and an Anchor. Keep one as the person or thing affected.",draw:{Agent:1,Anchor:1},slot:"aff"},
+   {text:"Draw two Agents. Tuck one beneath the object to establish who owns it.",draw:{Agent:2},tuck:true},
+   {text:"Optional: draw a Conflict for one of the characters. Use it if the obstacle or consequence helps the premise.",draw:{Conflict:1},slot:"obs",optional:true},
+   {text:"Draw three Aspects and tuck as many as you want under the relevant elements.",draw:{Aspect:3},tuck:true}],
+  tip:"For roleplaying: lock “affected” to the first party member who touches the object or enters the place, and skip the owner and Conflict draws."},
+ circle:{name:"Circle of Fate",kind:"Complex",blurb:"Two characters whose motives point toward each other. Each direction gets its own Engine and optional Conflict.",
+  slots:[{k:"a",label:"First character",types:["Agent"],c:0,r:0},{k:"e1",label:"Motive →",types:["Engine"],c:1,r:0},{k:"b",label:"Second character",types:["Agent"],c:2,r:0},{k:"e2",label:"← Motive",types:["Engine"],c:1,r:1}],
+  links:[{e:"e1",from:"a",to:"b"},{e:"e2",from:"b",to:"a"}],
+  steps:[{text:"Draw an Agent as the first character.",draw:{Agent:1},slot:"a"},
+   {text:"Draw a pair pointing right: keep one Engine in the slot and drag one Conflict onto it to tuck it. The Conflict is optional.",draw:{Engine:2,Conflict:2},slot:"e1"},
+   {text:"Draw an Agent as the second character.",draw:{Agent:1},slot:"b"},
+   {text:"Draw a pair pointing back toward the first character: keep one Engine and tuck one Conflict under it.",draw:{Engine:2,Conflict:2},slot:"e2"},
+   {text:"Draw two Aspects. Tuck either, both, or neither under the elements they describe.",draw:{Aspect:2},tuck:true}]},
+ clash:{name:"A Clash of Wills",kind:"Complex",blurb:"Two characters drawn to the same person or thing for different reasons, with both motives pointing inward.",
+  slots:[{k:"a",label:"First character",types:["Agent"],c:0,r:0},{k:"e1",label:"Motive →",types:["Engine"],c:1,r:0},{k:"t",label:"Shared target",types:AA,c:2,r:0},{k:"e2",label:"← Motive",types:["Engine"],c:3,r:0},{k:"b",label:"Second character",types:["Agent"],c:4,r:0}],
+  links:[{e:"e1",from:"a",to:"t"},{e:"e2",from:"b",to:"t"}],
+  steps:[{text:"Draw an Agent as the first character, on the left.",draw:{Agent:1},slot:"a"},
+   {text:"Draw a pair pointing right toward the shared target: keep one Engine and tuck one Conflict under it.",draw:{Engine:2,Conflict:2},slot:"e1"},
+   {text:"Draw an Agent and an Anchor. Keep one as the shared target.",draw:{Agent:1,Anchor:1},slot:"t"},
+   {text:"Draw a pair pointing left toward the target: keep one Engine and tuck one Conflict under it.",draw:{Engine:2,Conflict:2},slot:"e2"},
+   {text:"Draw two Agents. Keep one on the right as the second character.",draw:{Agent:2},slot:"b"},
+   {text:"Draw four Aspects and tuck as many as you want.",draw:{Aspect:4},tuck:true}],
+  tip:"For an adventure hook, have one rival ask the party for help."},
+ soul:{name:"A Soul Divided",kind:"Complex",blurb:"One character torn between two desires, with both motives pointing outward. The choice itself can supply the conflict.",
+  slots:[{k:"l",label:"Left target",types:AA,c:0,r:0},{k:"e1",label:"← Desire",types:["Engine"],c:1,r:0},{k:"m",label:"Main character",types:["Agent"],c:2,r:0},{k:"e2",label:"Desire →",types:["Engine"],c:3,r:0},{k:"r",label:"Right target",types:AA,c:4,r:0}],
+  links:[{e:"e1",from:"m",to:"l"},{e:"e2",from:"m",to:"r"}],
+  steps:[{text:"Draw an Agent and an Anchor. Keep one as the left target.",draw:{Agent:1,Anchor:1},slot:"l"},
+   {text:"Draw two Agents. Keep one in the center as the main character.",draw:{Agent:2},slot:"m"},
+   {text:"Draw a pair pointing left toward the left target: keep one Engine and tuck one Conflict under it.",draw:{Engine:2,Conflict:2},slot:"e1"},
+   {text:"Draw a pair pointing right toward the second target: keep one Engine and tuck one Conflict under it.",draw:{Engine:2,Conflict:2},slot:"e2"},
+   {text:"Draw an Agent and an Anchor. Keep one as the right target.",draw:{Agent:1,Anchor:1},slot:"r"},
+   {text:"Draw four Aspects and tuck any that help.",draw:{Aspect:4},tuck:true}],
+  tip:"In a roleplaying game, lock either target to a party member or something they care about."}
+};
+const layoutDef=()=>S.layout&&LAYOUTS[S.layout.id];
+const slotPos=sd=>({x:S.layout.ox+sd.c*CW,y:S.layout.oy+sd.r*RH});
+const slotOcc=k=>tops().find(i=>i.slot===k);
+function candY(){const d=layoutDef();return S.layout.oy+(Math.max(...d.slots.map(s=>s.r))+1)*RH}
+const curStep=()=>{const d=layoutDef();return d&&d.steps[S.layout.step]};
+function placeInSlot(iid,k){
+  const sd=layoutDef().slots.find(x=>x.k===k),i=S.inst[iid];
+  if(!sd.types.includes(cardOf(i).type)){toast(`That slot takes ${sd.types.join(" or ")}`);return}
+  const occ=slotOcc(k);if(occ&&occ.iid!==iid){tuck(iid,occ.iid);return}
+  detach(iid);const p=slotPos(sd);i.x=p.x;i.y=p.y;i.slot=k;i.cand=false;i.z=++S.z;render();save();
+}
+function canKeep(i){const st=curStep();if(!i.cand||!st||!st.slot||slotOcc(st.slot))return false;return layoutDef().slots.find(x=>x.k===st.slot).types.includes(cardOf(i).type)}
+function drawCandidates(spec,origin){
+  const made=[],short=[];
+  Object.entries(spec).forEach(([t,n])=>{for(let k=0;k<n;k++){const p=S.piles[t];if(!p||!p.length){short.push(t);break}made.push(p.pop())}});
+  made.forEach((id,i)=>{const iid=newInst(id,null,{x:origin.x+i*(CARD+28),y:origin.y});S.inst[iid].cand=true});
+  if(short.length)toast("Not enough cards left in: "+[...new Set(short)].join(", "));return made.length;
+}
+function setAside(quiet){tops().filter(i=>i.cand).forEach(i=>removeInst(i.iid,"discard",true));if(!quiet){render();save()}}
+function startLayout(id){
+  if(Object.keys(S.inst).length&&!confirm("Move the cards on the table to the discards and start this layout?"))return;
+  tops().forEach(i=>removeInst(i.iid,"discard",true));
+  S.layout={id,step:0,drawn:false,ox:60,oy:70};closeSheet();render();save();window.scrollTo({top:0});
+}
+function layoutDraw(){drawCandidates(curStep().draw,{x:S.layout.ox,y:candY()});S.layout.drawn=true;render();save()}
+function layoutNext(){setAside(true);S.layout.step++;S.layout.drawn=false;if(S.layout.step>=layoutDef().steps.length){finishLayout();return}render();save();window.scrollTo({top:0,behavior:"smooth"})}
+function finishLayout(){
+  const d=layoutDef();if(!d)return;setAside(true);
+  (d.links||[]).forEach(l=>{const e=slotOcc(l.e),f=slotOcc(l.from),t=slotOcc(l.to);if(e&&e.link===undefined&&f&&t)e.link={from:f.iid,to:t.iid}});
+  Object.values(S.inst).forEach(i=>i.slot=null);S.layout=null;render();save();toast("Layout finished");
+}
+
+/* ---- links ---- */
+const topOf=iid=>{const i=S.inst[iid];return i&&i.parent?i.parent:iid};
+function linkOf(i){
+  if(!i||i.parent||cardOf(i).type!=="Engine"||i.link===false)return null;
+  if(i.link&&i.link.from)return i.link;
+  const d=layoutDef();if(!d||!i.slot)return null;const l=(d.links||[]).find(x=>x.e===i.slot);if(!l)return null;
+  const f=slotOcc(l.from),t=slotOcc(l.to);return f&&t?{from:f.iid,to:t.iid}:null;
+}
+function effectiveLinks(){return Object.values(S.inst).map(i=>{const l=linkOf(i);return l&&S.inst[l.from]&&S.inst[l.to]&&l.from!==i.iid&&l.to!==i.iid?{e:i.iid,from:l.from,to:l.to}:null}).filter(Boolean)}
+const shortName=iid=>{const i=S.inst[iid];return i?activeText(i).join(" / "):"?"};
+
+/* ========== phone interface ========== */
+function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+function renderDrawbar(){
+  const bar=$("#drawbar");bar.innerHTML="";bar.style.display=hasLib()?"flex":"none";
+  pileTypes().forEach(t=>{const n=(S.piles[t]||[]).length;const b=el("button","pile");b.style.setProperty("--c",typeColor(t));
+    b.append(el("span",null,t),el("span","n",n));b.disabled=!n;b.onclick=()=>drawOne(t);bar.appendChild(b)});
+}
+function cardEl(i,opts={}){
+  const c=cardOf(i),two=TWO_CUE.has(c.type),k=mod(i.rot,4);
+  const d=el("div","card"+(i.cand?" cand":""));d.style.setProperty("--c",typeColor(c.type));
+  const top=el("div","top");top.append(el("span",null,c.type),el("span","pk",i.custom?"Your card":c.pack));
+  const more=el("button","more","⋯");more.setAttribute("aria-label","Card actions");more.onclick=e=>{e.stopPropagation();cardSheet(i.iid)};top.appendChild(more);
+  d.appendChild(top);if(i.custom)d.appendChild(el("span","lock","🔒"));
+  const face=el("div","face");const at=activeText(i);
+  face.appendChild(document.createTextNode(at[0]||""));if(at[1]){const b=el("span","both","and "+at[1]);face.appendChild(b)}
+  face.title="Tap to turn the card";face.onclick=()=>rotate(i.iid,1);d.appendChild(face);
+  // other cues: tap to turn straight to them
+  const turns=el("div","turns");
+  if(two){
+    const other=k%2===1?null:(activeEdges(i)[0]==="b"?"t":"b");
+    if(other&&c.cues[other]){const ch=el("button","chip");ch.append(el("b",null,"↻"),document.createTextNode(c.cues[other]));ch.onclick=()=>rotate(i.iid,1);turns.appendChild(ch)}
+    const bt=el("button","chip"+(k%2===1?" on":""),k%2===1?"Use one cue":"Use both cues");bt.onclick=()=>{i.rot+=k%2===1?-1:1;render();save()};turns.appendChild(bt);
+  }else{
+    [1,2,3].forEach(n=>{const e=EDGES[mod(k+n,4)];if(!c.cues[e])return;const ch=el("button","chip");
+      ch.append(el("b",null,n===1?"↻":n===2?"↻↻":"↺"),document.createTextNode(c.cues[e]));ch.onclick=()=>rotate(i.iid,n===3?-1:n);turns.appendChild(ch)});
+  }
+  d.appendChild(turns);
+  const L=linkOf(i);
+  if(L&&S.inst[L.from]&&S.inst[L.to]){const ln=el("div","linkline",`${shortName(L.from)}  →  this  →  ${shortName(L.to)}`);d.appendChild(ln)}
+  if(i.children.length){const tk=el("div","tucks");
+    i.children.forEach(cid=>{const ci=S.inst[cid];if(!ci)return;const cc=cardOf(ci);const r=el("div","tuck");r.style.setProperty("--c",typeColor(cc.type));
+      r.append(el("span",null,activeText(ci).join(" and ")),el("span","t",cc.type));r.onclick=()=>cardSheet(cid);tk.appendChild(r)});
+    d.appendChild(tk)}
+  if(i.cand){const cb=el("div","cbtns");
+    if(canKeep(i)){const kb=el("button","keep","Keep");kb.onclick=()=>placeInSlot(i.iid,curStep().slot);cb.appendChild(kb)}
+    const tb=el("button",null,"Tuck under…");tb.onclick=()=>pickCard("Tuck under which card?",tops().filter(x=>x.iid!==i.iid&&!x.cand),t=>tuck(i.iid,t));cb.appendChild(tb);
+    if(!S.layout){const kp=el("button",null,"Keep on table");kp.onclick=()=>{i.cand=false;i.x=nextSpot().x;i.y=70;render();save()};cb.appendChild(kp)}
+    d.appendChild(cb)}
+  return d;
+}
+function render(){
+  renderDrawbar();const m=$("#main");m.innerHTML="";
+  if(!hasLib()){
+    const e=el("div","empty");e.innerHTML="<b>Welcome.</b><br>Load your cards to begin: import your Story Engine workbook (.xlsx), or load a session file saved from the desktop table.<br><br>";
+    const b1=el("button","primary","Import workbook");b1.onclick=()=>$("#fileX").click();
+    const b2=el("button",null,"Load session file");b2.onclick=()=>$("#fileS").click();b2.style.marginLeft="8px";
+    e.append(b1,b2);m.appendChild(e);renderReading();return;
+  }
+  const d=layoutDef(),st=curStep();
+  if(d){
+    const lp=el("div");lp.id="lp";
+    lp.append(el("div","k",d.kind+" layout"),el("h3",null,d.name));
+    const pr=el("div","prog");d.steps.forEach((s,j)=>pr.appendChild(el("i",j<S.layout.step?"d":j===S.layout.step?"c":"")));lp.appendChild(pr);
+    lp.appendChild(el("div","sec",`Step ${S.layout.step+1} of ${d.steps.length}`+(st.optional?" · optional":"")));
+    lp.appendChild(el("div","now",st.text));
+    const acts=el("div","acts");const mk=(t,f,c)=>{const b=el("button",c||"",t);b.onclick=f;acts.appendChild(b)};
+    if(!S.layout.drawn)mk("Draw",layoutDraw,"primary");else mk("Draw again",()=>{setAside(true);layoutDraw()});
+    const last=S.layout.step===d.steps.length-1;
+    mk(S.layout.drawn?(last?"Finish":"Next step"):(last?"Finish":"Skip"),layoutNext,S.layout.drawn?"primary":"");
+    mk("End layout",finishLayout,"ghost");lp.appendChild(acts);
+    if(d.tip)lp.appendChild(el("div","tip",d.tip));m.appendChild(lp);
+  }
+  const cands=ordered().filter(i=>i.cand);
+  if(cands.length){
+    m.appendChild(el("div","sec",(st&&st.slot)?"Candidates: keep one":"Candidates: tuck the ones you want"));
+    const row=el("div","cands");cands.forEach(i=>row.appendChild(cardEl(i)));m.appendChild(row);
+  }
+  if(d){
+    d.slots.forEach(sd=>{
+      m.appendChild(el("div","slotlbl",sd.label));
+      const o=slotOcc(sd.k);
+      if(o)m.appendChild(cardEl(o));
+      else{const s=el("div","slot"+(st&&st.slot===sd.k?" cur":""),sd.types.join(" or "));s.appendChild(el("br"));
+        const lb=el("button",null,"🔒 Use your own");lb.onclick=()=>customSheet(sd.k);s.appendChild(lb);m.appendChild(s)}
+    });
+    const other=ordered().filter(i=>!i.cand&&!i.slot);
+    if(other.length){m.appendChild(el("div","sec","Other cards"));other.forEach(i=>m.appendChild(cardEl(i)))}
+  }else{
+    const list=ordered().filter(i=>!i.cand);
+    if(!list.length&&!cands.length){const e=el("div","empty");e.innerHTML="Tap a pile above to draw a card, or choose <b>Layouts</b> for a guided spread.<br>Cards read top to bottom in the prompt.";m.appendChild(e)}
+    list.forEach(i=>m.appendChild(cardEl(i)));
+  }
+  renderReading();
+}
+function renderReading(){const t=promptText();$("#reading").textContent=t||"Cards you place will build a sentence here.";$("#reading").style.color=t?"":"var(--muted)";if($("#notes").value!==S.notes)$("#notes").value=S.notes}
+
+/* ---- sheets ---- */
+function openSheet(build){const sh=$("#sheet");sh.innerHTML="";sh.appendChild(el("div","grab"));build(sh);$("#scrim").classList.add("show");sh.classList.add("show");sh.scrollTop=0}
+function closeSheet(){$("#scrim").classList.remove("show");$("#sheet").classList.remove("show")}
+$("#scrim").onclick=closeSheet;
+function items(sh,list){const box=el("div","items");list.forEach(it=>{if(!it)return;const b=el("button",it.danger?"danger":"");
+  if(it.c){const bar=el("span","bar");bar.style.setProperty("--c",it.c);b.appendChild(bar)}
+  b.appendChild(el("span",null,it.label));if(it.sub)b.appendChild(el("small",null,it.sub));
+  b.onclick=()=>{if(!it.keep)closeSheet();it.fn()};box.appendChild(b)});sh.appendChild(box)}
+function pickCard(title,list,fn){
+  if(!list.length){toast("No other cards on the table");return}
+  openSheet(sh=>{sh.appendChild(el("h3",null,title));
+    items(sh,list.map(x=>({label:activeText(x).join(" and "),sub:cardOf(x).type,c:typeColor(cardOf(x).type),fn:()=>fn(x.iid)})))});
+}
+function cardSheet(iid){
+  const i=S.inst[iid];if(!i)return;const c=cardOf(i),two=isTwo(i),L=linkOf(i),d=layoutDef();
+  openSheet(sh=>{
+    sh.appendChild(el("h3",null,activeText(i).join(" and ")));
+    sh.appendChild(el("div","sub",`${c.type} · ${i.custom?"your card":c.pack+" · "+c.id}`));
+    const others=tops().filter(x=>x.iid!==iid&&x.iid!==i.parent&&!x.cand);
+    const emptySlots=d&&!i.parent?d.slots.filter(sd=>!slotOcc(sd.k)&&sd.types.includes(c.type)):[];
+    items(sh,[
+      {label:two?"Flip to the other cue":"Turn back (counterclockwise)",fn:()=>rotate(iid,-1)},
+      two&&!i.parent?{label:mod(i.rot,4)%2?"Use one cue":"Use both cues",fn:()=>{i.rot+=mod(i.rot,4)%2?-1:1;render();save()}}:null,
+      canKeep(i)?{label:"Keep in “"+d.slots.find(x=>x.k===curStep().slot).label+"”",fn:()=>placeInSlot(iid,curStep().slot)}:null,
+      emptySlots.length&&!canKeep(i)?{label:"Place in a slot…",fn:()=>setTimeout(()=>openSheet(s2=>{s2.appendChild(el("h3",null,"Place in which slot?"));items(s2,emptySlots.map(sd=>({label:sd.label,fn:()=>placeInSlot(iid,sd.k)})))}),220)}:null,
+      i.parent?{label:"Untuck",fn:()=>untuck(iid)}:{label:"Tuck under…",fn:()=>setTimeout(()=>pickCard("Tuck under which card?",others,t=>tuck(iid,t)),220)},
+      i.children.length?{label:"Untuck everything",fn:()=>[...i.children].forEach(untuck)}:null,
+      c.type==="Engine"&&!i.parent?{label:L?"Change what it points from / to…":"Point from one card to another…",fn:()=>setTimeout(()=>linkFlow(iid),220)}:null,
+      L?{label:"Reverse direction",fn:()=>{i.link={from:L.to,to:L.from};render();save()}}:null,
+      L?{label:"Remove link",fn:()=>{i.link=false;render();save()}}:null,
+      !i.parent&&!i.cand&&!i.slot?{label:"Move earlier in the prompt",fn:()=>moveOrder(iid,-1)}:null,
+      !i.parent&&!i.cand&&!i.slot?{label:"Move later in the prompt",fn:()=>moveOrder(iid,1)}:null,
+      i.cardId?{label:"Return to the bottom of its pile",fn:()=>removeInst(iid,"pile")}:null,
+      {label:i.cardId?"Discard":"Remove this card",danger:true,fn:()=>removeInst(iid,"discard")}
+    ]);
+  });
+}
+function linkFlow(eid){
+  const cand=tops().filter(x=>x.iid!==eid&&!x.cand);
+  if(cand.length<2){toast("Put at least two other cards on the table first");return}
+  pickCard("This motive comes FROM…",cand,from=>setTimeout(()=>pickCard("…and points TO",cand.filter(x=>x.iid!==from),to=>{S.inst[eid].link={from,to};render();save();toast("Linked")}),220));
+}
+function packsSheet(){
+  openSheet(sh=>{
+    sh.appendChild(el("h3",null,"Choose packs"));sh.appendChild(el("div","sub","Selected packs are shuffled into one pile per card type. Cards already on the table stay put."));
+    const by={};Object.entries(S.packs).forEach(([k,p])=>(by[p.deck]=by[p.deck]||[]).push([k,p]));
+    const boxes=[];
+    Object.entries(by).forEach(([deck,list])=>{sh.appendChild(el("div","grp",deck));list.forEach(([k,p])=>{
+      const l=el("label","row");const cb=document.createElement("input");cb.type="checkbox";cb.checked=!!S.selected[k];cb.dataset.k=k;boxes.push(cb);
+      l.append(cb,el("span",null,p.pack),el("small",null,p.n));sh.appendChild(l)})});
+    const r=el("div","btnrow");const all=el("button",null,"All");all.onclick=()=>boxes.forEach(b=>b.checked=true);
+    const none=el("button",null,"None");none.onclick=()=>boxes.forEach(b=>b.checked=false);
+    const go=el("button","primary","Shuffle");go.onclick=()=>{boxes.forEach(b=>S.selected[b.dataset.k]=b.checked);closeSheet();buildPiles()};
+    r.append(all,none,go);sh.appendChild(r);
+  });
+}
+function customSheet(slotKey){
+  const sd=slotKey&&layoutDef()?layoutDef().slots.find(x=>x.k===slotKey):null;
+  openSheet(sh=>{
+    sh.appendChild(el("h3",null,"Your own card"));sh.appendChild(el("div","sub","Add something you already know, such as a character from your novel."));
+    const f=(lab,node)=>{const w=el("div","field");w.append(el("label",null,lab),node);sh.appendChild(w);return w};
+    const sel=document.createElement("select");(sd?sd.types:pileTypes()).forEach(t=>{const o=el("option",null,t);sel.appendChild(o)});f("Card type",sel);
+    const inp=()=>{const x=document.createElement("input");return x};
+    const b=inp(),r=inp(),t=inp(),l=inp();b.placeholder="e.g. Captain Mara Voss";
+    f("Main cue",b);const fr=f("Right cue (optional)",r);const ft=f("Top cue (optional)",t);const fl=f("Left cue (optional)",l);
+    const upd=()=>{const two=TWO_CUE.has(sel.value);fr.style.display=fl.style.display=two?"none":"";ft.querySelector("label").textContent=two?"Second cue (optional)":"Top cue (optional)"};
+    sel.onchange=upd;upd();
+    const row=el("div","btnrow");const add=el("button","primary","Add");
+    add.onclick=()=>{if(!b.value.trim()){toast("Enter the main cue");return}const two=TWO_CUE.has(sel.value);
+      const iid=newInst(null,{id:"custom",deck:"Custom",pack:"Custom",type:sel.value,cues:{b:b.value.trim(),t:t.value.trim(),r:two?"":r.value.trim(),l:two?"":l.value.trim()}});
+      closeSheet();if(slotKey)placeInSlot(iid,slotKey);else{render();save()}};
+    row.appendChild(add);sh.appendChild(row);setTimeout(()=>b.focus(),250);
+  });
+}
+function discardSheet(){
+  openSheet(sh=>{
+    sh.appendChild(el("h3",null,"Discards"));
+    if(!S.discard.length){sh.appendChild(el("div","sub","Nothing set aside."));return}
+    sh.appendChild(el("div","sub","Tap a card to bring it back to the table."));
+    items(sh,[{label:"Shuffle all back into their piles",fn:()=>{S.discard.forEach(id=>{const t=S.library[id].type;(S.piles[t]=S.piles[t]||[]).push(id)});S.discard=[];Object.values(S.piles).forEach(shuffle);render();save();toast("Shuffled back")}},
+      ...S.discard.map((id,k)=>{const c=S.library[id];return c&&{label:c.cues.b||c.cues.t||c.cues.r||c.cues.l,sub:c.type,c:typeColor(c.type),fn:()=>{S.discard.splice(k,1);newInst(id);render();save()}}})]);
+  });
+}
+function layoutsSheet(){
+  if(!hasLib()){toast("Load your cards first");return}
+  openSheet(sh=>{sh.appendChild(el("h3",null,"Layouts"));sh.appendChild(el("div","sub","Guided spreads from your user guide."));
+    items(sh,Object.entries(LAYOUTS).map(([id,d])=>({label:d.name,sub:d.kind,fn:()=>startLayout(id)})))});
+}
+function menuSheet(){
+  openSheet(sh=>{sh.appendChild(el("h3",null,"Menu"));
+    const lib=hasLib();
+    items(sh,[
+      lib?{label:"Packs…",fn:packsSheet}:null,
+      lib?{label:"Add your own card…",fn:()=>setTimeout(()=>customSheet(null),220)}:null,
+      lib?{label:`Discards (${S.discard.length})…`,fn:()=>setTimeout(discardSheet,220)}:null,
+      lib?{label:"Draw a pair (2 Engines + 2 Conflicts)",fn:()=>{drawCandidates({Engine:2,Conflict:2},{x:nextSpot().x,y:(S.layout?candY():70)+RH*2});render();save();toast("Keep one Engine; tuck one Conflict under it")}}:null,
+      lib?{label:"Draw an endpoint (Agent + Anchor)",fn:()=>{drawCandidates({Agent:1,Anchor:1},{x:nextSpot().x,y:(S.layout?candY():70)+RH*2});render();save()}}:null,
+      lib?{label:"Set aside unused draws",fn:()=>setAside()}:null,
+      lib?{label:"Save session file",fn:saveSession}:null,
+      {label:"Load session file",fn:()=>$("#fileS").click()},
+      {label:lib?"Import a new workbook":"Import workbook",fn:()=>$("#fileX").click()},
+      lib?{label:"Clear table",danger:true,fn:()=>{if(confirm("Move every card on the table to the discards?")){tops().forEach(i=>removeInst(i.iid,"discard",true));S.layout=null;render();save()}}}:null
+    ]);
+    sh.appendChild(el("div","sub","Your cards and sessions are stored only on this phone. Save a session file now and then as a backup."));
+  });
+}
+$("#bMenu").onclick=menuSheet;$("#bLayouts").onclick=layoutsSheet;
+
+/* ---- prompt bar, sessions ---- */
+$("#bPbar").onclick=()=>{const p=$("#pbar");p.classList.toggle("open");$("#bPbar").textContent=p.classList.contains("open")?"Close ▾":"Notes ▴"};
+$("#notes").addEventListener("input",e=>{S.notes=e.target.value;save()});
+$("#bCopy").onclick=async()=>{const t=promptText()+(S.notes?"\n\n"+S.notes:"");try{await navigator.clipboard.writeText(t);toast("Copied")}catch(e){prompt("Copy this text:",t)}};
+function saveSession(){
+  const d=new Date(),name=`story-session-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}.json`;
+  const blob=new Blob([JSON.stringify(S)],{type:"application/json"});
+  const file=new File([blob],name,{type:"application/json"});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:name}).catch(()=>{})}
+  else{const a=document.createElement("a");a.download=name;a.href=URL.createObjectURL(blob);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500)}
+}
+$("#fileS").onchange=e=>{const f=e.target.files[0];e.target.value="";if(!f)return;const fr=new FileReader();
+  fr.onload=()=>{try{const d=JSON.parse(fr.result);if(!d.library||!d.inst)throw new Error("not a session file");S=Object.assign(blankState(),d);S.connect=null;render();save();toast("Session loaded")}catch(err){alert("Could not load that session: "+err.message)}};fr.readAsText(f)};
+
+/* ---- start ---- */
+try{const d=JSON.parse(localStorage.getItem(LS_KEY)||"null");if(d&&d.library)S=Object.assign(blankState(),d)}catch(e){}
+S.connect=null;render();
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
